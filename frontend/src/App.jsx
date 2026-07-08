@@ -69,7 +69,7 @@ export default function App() {
 
   const cargarHistorial = async () => {
     try {
-      const API_URL = 'https://gestorcomprobantes.onrender.com/api';
+      const API_URL = 'https://backend-gestorcomprobantes.onrender.com/api';
       
       const resCot = await fetch(`${API_URL}/cotizaciones`);
       const resRec = await fetch(`${API_URL}/recibos`);
