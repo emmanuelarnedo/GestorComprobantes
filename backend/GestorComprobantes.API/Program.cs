@@ -8,7 +8,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("PermitirFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") 
+        policy.WithOrigins("https://gestor-comprobantes-one.vercel.app/") 
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
