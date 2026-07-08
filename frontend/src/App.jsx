@@ -19,7 +19,6 @@ const UBICACIONES = {
 };
 
 // --- CONSTANTE GLOBAL ---
-// Al estar aquí afuera, TODAS las funciones pueden usarla sin errores.
 const API_URL = 'https://backend-gestorcomprobantes.onrender.com/api';
 
 export default function App() {
@@ -73,7 +72,6 @@ export default function App() {
 
   const cargarHistorial = async () => {
     try {
-      // Usamos la variable global API_URL
       const resCot = await fetch(`${API_URL}/cotizaciones`);
       const resRec = await fetch(`${API_URL}/recibos`);
 
@@ -216,7 +214,6 @@ export default function App() {
     }
 
     try {
-      // Usamos la variable global API_URL
       const response = await fetch(`${API_URL}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -549,145 +546,153 @@ export default function App() {
 
         {/* --- MODAL GLOBAL DEL PDF A4 --- */}
         {vistaPrevia && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
             
-            <div className="bg-white rounded-md shadow-2xl my-10 overflow-hidden w-[210mm] min-w-[210mm] relative flex flex-col">
+            <div className="relative flex flex-col w-full items-center my-4 sm:my-10">
               
-              <button onClick={() => setVistaPrevia(false)} className="absolute top-2 right-2 text-3xl font-bold text-red-500 hover:text-red-700 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full z-40">
+              {/* Botón de cerrar flotante */}
+              <button onClick={() => setVistaPrevia(false)} className="absolute -top-2 right-2 sm:-top-6 sm:-right-10 text-3xl font-bold text-white hover:text-red-400 z-50 bg-gray-800 border border-gray-600 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors">
                 &times;
               </button>
 
-              {/* ÁREA DEL PDF (Formato estricto A4) */}
-              <div id="area-pdf-imprimible" className="bg-white text-gray-900 p-[15mm] w-[210mm] h-[296mm] max-h-[296mm] overflow-hidden font-sans text-[12px] flex flex-col box-border relative">
+              {/* Contenedor responsive que ajusta la altura para no dejar espacios en blanco enormes */}
+              <div className="w-full flex justify-center overflow-hidden h-[145mm] sm:h-[225mm] md:h-[270mm] lg:h-auto mt-12 sm:mt-0">
                 
-                {/* MARCA DE AGUA CENTRAL CON FILTRO COHERENTE */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none z-0">
-                  <img src="/marca de agua.png" alt="Marca de Agua" className="w-[250mm] object-contain grayscale" />
-                </div>
+                {/* Wrapper de escalado visual */}
+                <div className="origin-top scale-[0.48] sm:scale-75 md:scale-90 lg:scale-100 transition-transform">
 
-                <div className="relative z-10 flex flex-col h-full w-full">
-                  {/* ENCABEZADO FIJO */}
-                  <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4 mb-6">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-black uppercase text-blue-900 leading-tight">Transportes Don Cristino</h3>
-                      <p className="text-[10px] mt-0.5 text-gray-600">De: Arnedo Eduardo Augusto</p>
-                      <p className="text-[10px] text-gray-600">CUIT: 20-16175883-4</p>
-                    </div>
+                  {/* ÁREA DEL PDF INTACTA (A4 210x296mm) */}
+                  <div id="area-pdf-imprimible" className="bg-white text-gray-900 p-[15mm] w-[210mm] h-[296mm] max-h-[296mm] overflow-hidden font-sans text-[12px] flex flex-col box-border relative shadow-2xl">
                     
-                    <div className="w-[30%] flex justify-center">
-                      <img src="/logo_tarjeta.jpg" alt="Logo" className="w-full max-w-[180px] h-auto object-contain mix-blend-multiply" />
+                    {/* MARCA DE AGUA CENTRAL CON FILTRO COHERENTE */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none z-0">
+                      <img src="/Imagen de página.png" alt="Marca de Agua" className="w-[250mm] object-contain grayscale" />
                     </div>
 
-                    <div className="flex-1 text-right">
-                      <h4 className="text-sm font-black uppercase bg-gray-100 p-1 px-3 border border-gray-300 inline-block">{tipoComprobante}</h4>
-                      <p className="text-xs font-bold mt-1.5">N° {String(obtenerIdPreview()).padStart(5, '0')}</p>
-                      <p className="text-[10px] text-gray-600">Fecha: {new Date().toLocaleDateString('es-AR')}</p>
-                    </div>
-                  </div>
-                  
-                  {/* CUERPO DINÁMICO */}
-                  <div className="flex-grow flex flex-col">
-                    {tipoComprobante === 'Cotización' ? (
-                      <div className="flex-grow flex flex-col">
-                        <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 border border-gray-300 text-[11px] text-gray-800">
-                          <p><strong>Señor(es):</strong> {cliente.toUpperCase() || '----------------------------------------'}</p>
-                          <p><strong>Lugar de Destino:</strong> {direccion || '----------------------------------------'}</p>
-                          <p><strong>Localidad:</strong> {provincia === 'Otra' ? otraLocalidad : localidad}</p>
-                          <p><strong>Provincia:</strong> {provincia === 'Otra' ? otraProvincia : provincia}</p>
-                        </div>
-
-                        <div className="w-full">
-                          <table className="w-full text-left border-collapse border border-gray-400 text-[11px] text-gray-800">
-                            <thead>
-                              <tr className="bg-gray-100 border-b border-gray-400">
-                                <th className="p-2 border-r border-gray-400">Servicio</th>
-                                <th className="p-2 text-center border-r border-gray-400 w-16">Cantidad</th>
-                                <th className="p-2 text-right border-r border-gray-400 w-24">Precio unitario</th>
-                                <th className="p-2 text-right w-24">Precio total</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-300">
-                              {items.length === 0 ? (
-                                <tr>
-                                  <td colSpan="4" className="p-4 text-center italic text-gray-400">Sin líneas de servicios cargadas.</td>
-                                </tr>
-                              ) : (
-                                items.map(i => (
-                                  <tr key={i.id}>
-                                    <td className="p-2 border-r border-gray-400">{i.servicio}</td>
-                                    <td className="p-2 text-center border-r border-gray-400">{i.cantidad}</td>
-                                    <td className="p-2 text-right border-r border-gray-400">${i.precioUnitario.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-                                    <td className="p-2 text-right font-bold">${i.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
+                    <div className="relative z-10 flex flex-col h-full w-full">
+                      {/* ENCABEZADO FIJO */}
+                      <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4 mb-6">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-black uppercase text-blue-900 leading-tight">Transportes Don Cristino</h3>
+                          <p className="text-[10px] mt-0.5 text-gray-600">De: Arnedo Eduardo Augusto</p>
+                          <p className="text-[10px] text-gray-600">CUIT: 20-16175883-4</p>
                         </div>
                         
-                        {/* TOTALES DE COTIZACIÓN AL FONDO */}
-                        <div className="mt-auto flex justify-between items-end pt-4 border-t-2 border-gray-800">
-                          <div className="w-2/3 text-[10px] space-y-1.5 text-gray-600 italic">
-                            <p className="font-bold text-gray-900 not-italic">Método de pago: Efectivo</p>
-                            <p className="leading-tight">
-                              * Observaciones: El presupuesto contempla la logística hacia <strong>{direccion || '[Dirección]'}</strong>, localidad de <strong>{provincia === 'Otra' ? otraLocalidad : localidad}</strong>, <strong>{provincia === 'Otra' ? otraProvincia : provincia}</strong>. Validez de 20 días hábiles.
-                            </p>
-                          </div>
-                          <div className="text-right w-1/3">
-                            <span className="text-[10px] text-gray-400 block uppercase font-bold">Total Neto a Pagar</span>
-                            <span className="text-xl font-black text-blue-900">
-                              ${totalGeneral.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-grow flex flex-col pt-6">
-                        <div className="space-y-8">
-                          <div className="flex items-end">
-                            <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">Recibí de (Señor/es):</span> 
-                            <span className="flex-1 border-b border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">{cliente.toUpperCase() || ' '}</span>
-                          </div>
-                          <div className="flex items-end">
-                            <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">La suma de pesos:</span> 
-                            <span className="flex-1 border-b border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">
-                              ${montoRecibo ? parseFloat(montoRecibo).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '0,00'}
-                            </span>
-                          </div>
-                          <div className="flex items-end">
-                            <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">En concepto de:</span> 
-                            <span className="flex-1 border-b border-gray-400 pb-1 px-2 text-[14px]">{conceptoRecibo || ' '}</span>
-                          </div>
-                          <div className="flex items-end">
-                            <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">Forma de pago:</span> 
-                            <span className="flex-1 border-b border-gray-400 pb-1 px-2 text-[14px]">{metodoPagoRecibo || ' '}</span>
-                          </div>
+                        <div className="w-[30%] flex justify-center">
+                          <img src="/logo_tarjeta.jpg" alt="Logo" className="w-full max-w-[180px] h-auto object-contain mix-blend-multiply" />
                         </div>
 
-                        {/* FIRMAS DE RECIBO AL FONDO */}
-                        <div className="mt-auto flex justify-between px-10 pb-4">
-                          <div className="text-center w-48 border-t-2 border-gray-800 pt-2">
-                            <p className="font-bold text-[10px]">Firma / Aclaración</p>
-                            <p className="text-[9px] text-gray-600 uppercase mt-1">Señor/es</p>
-                          </div>
-                          <div className="text-center w-48 border-t-2 border-gray-800 pt-2">
-                            <p className="font-bold text-[10px]">Transportes Don Cristino</p>
-                            <p className="text-[9px] text-gray-600 uppercase mt-1">Recibí Conforme</p>
-                          </div>
+                        <div className="flex-1 text-right">
+                          <h4 className="text-sm font-black uppercase bg-gray-100 p-1 px-3 border border-gray-300 inline-block">{tipoComprobante}</h4>
+                          <p className="text-xs font-bold mt-1.5">N° {String(obtenerIdPreview()).padStart(5, '0')}</p>
+                          <p className="text-[10px] text-gray-600">Fecha: {new Date().toLocaleDateString('es-AR')}</p>
                         </div>
                       </div>
-                    )}
+                      
+                      {/* CUERPO DINÁMICO */}
+                      <div className="flex-grow flex flex-col">
+                        {tipoComprobante === 'Cotización' ? (
+                          <div className="flex-grow flex flex-col">
+                            <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 border border-gray-300 text-[11px] text-gray-800">
+                              <p><strong>Señor(es):</strong> {cliente.toUpperCase() || '----------------------------------------'}</p>
+                              <p><strong>Lugar de Destino:</strong> {direccion || '----------------------------------------'}</p>
+                              <p><strong>Localidad:</strong> {provincia === 'Otra' ? otraLocalidad : localidad}</p>
+                              <p><strong>Provincia:</strong> {provincia === 'Otra' ? otraProvincia : provincia}</p>
+                            </div>
+
+                            <div className="w-full mt-4">
+                              <table className="w-full text-left border-collapse border border-gray-400 text-[11px] text-gray-800">
+                                <thead>
+                                  <tr className="bg-gray-100 border-b border-gray-400">
+                                    <th className="p-2 border-r border-gray-400">Servicio</th>
+                                    <th className="p-2 text-center border-r border-gray-400 w-16">Cantidad</th>
+                                    <th className="p-2 text-right border-r border-gray-400 w-24">Precio unitario</th>
+                                    <th className="p-2 text-right w-24">Precio total</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-300">
+                                  {items.length === 0 ? (
+                                    <tr>
+                                      <td colSpan="4" className="p-4 text-center italic text-gray-400">Sin líneas de servicios cargadas.</td>
+                                    </tr>
+                                  ) : (
+                                    items.map(i => (
+                                      <tr key={i.id}>
+                                        <td className="p-2 border-r border-gray-400">{i.servicio}</td>
+                                        <td className="p-2 text-center border-r border-gray-400">{i.cantidad}</td>
+                                        <td className="p-2 text-right border-r border-gray-400">${i.precioUnitario.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                                        <td className="p-2 text-right font-bold">${i.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                                      </tr>
+                                    ))
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                            
+                            {/* TOTALES DE COTIZACIÓN AL FONDO */}
+                            <div className="mt-auto flex justify-between items-end pt-4 border-t-2 border-gray-800">
+                              <div className="w-2/3 text-[10px] space-y-1.5 text-gray-600 italic pr-4">
+                                <p className="font-bold text-gray-900 not-italic">Método de pago: Efectivo</p>
+                                <p className="leading-tight">
+                                  * Observaciones: El presupuesto contempla la logística hacia <strong>{direccion || '[Dirección]'}</strong>, localidad de <strong>{provincia === 'Otra' ? otraLocalidad : localidad}</strong>, <strong>{provincia === 'Otra' ? otraProvincia : provincia}</strong>. Validez de 20 días hábiles.
+                                </p>
+                              </div>
+                              <div className="text-right w-1/3">
+                                <span className="text-[10px] text-gray-400 block uppercase font-bold">Total Neto a Pagar</span>
+                                <span className="text-xl font-black text-blue-900">
+                                  ${totalGeneral.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex-grow flex flex-col pt-6">
+                            <div className="space-y-8">
+                              <div className="flex items-end">
+                                <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">Recibí de (Señor/es):</span> 
+                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">{cliente.toUpperCase() || ' '}</span>
+                              </div>
+                              <div className="flex items-end">
+                                <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">La suma de pesos:</span> 
+                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">
+                                  ${montoRecibo ? parseFloat(montoRecibo).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '0,00'}
+                                </span>
+                              </div>
+                              <div className="flex items-end">
+                                <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">En concepto de:</span> 
+                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 text-[14px]">{conceptoRecibo || ' '}</span>
+                              </div>
+                              <div className="flex items-end">
+                                <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">Forma de pago:</span> 
+                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 text-[14px]">{metodoPagoRecibo || ' '}</span>
+                              </div>
+                            </div>
+
+                            {/* FIRMAS DE RECIBO AL FONDO */}
+                            <div className="mt-auto flex justify-between px-10 pb-4">
+                              <div className="text-center w-48 border-t-2 border-gray-800 pt-2">
+                                <p className="font-bold text-[10px]">Firma / Aclaración</p>
+                                <p className="text-[9px] text-gray-600 uppercase mt-1">Señor/es</p>
+                              </div>
+                              <div className="text-center w-48 border-t-2 border-gray-800 pt-2">
+                                <p className="font-bold text-[10px]">Transportes Don Cristino</p>
+                                <p className="text-[9px] text-gray-600 uppercase mt-1">Recibí Conforme</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-
               </div>
 
-              {/* ZONA DE BOTONES DEL MODAL */}
-              <div className="bg-gray-100 p-4 flex gap-3 border-t">
-                <button onClick={handleGuardarDocumento} className="flex-1 bg-blue-600 text-white font-black p-3 rounded shadow hover:bg-blue-700 flex items-center justify-center gap-2 uppercase text-xs">
+              {/* ZONA DE BOTONES DEL MODAL (Fija en la parte inferior) */}
+              <div className="bg-white p-4 flex flex-col sm:flex-row gap-3 w-full max-w-[210mm] mt-4 rounded-xl shadow-lg z-10">
+                <button onClick={handleGuardarDocumento} className="flex-1 bg-blue-600 text-white font-black p-3 rounded shadow hover:bg-blue-700 flex items-center justify-center gap-2 uppercase text-xs transition-colors">
                   💾 Guardar y Descargar PDF
                 </button>
-                <button onClick={handleEnviarCorreo} className="flex-1 bg-green-600 text-white font-black p-3 rounded shadow hover:bg-green-700 flex items-center justify-center gap-2 uppercase text-xs">
+                <button onClick={handleEnviarCorreo} className="flex-1 bg-green-600 text-white font-black p-3 rounded shadow hover:bg-green-700 flex items-center justify-center gap-2 uppercase text-xs transition-colors">
                   📧 Enviar Documento por Correo
                 </button>
               </div>
