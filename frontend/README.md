@@ -29,14 +29,14 @@ Sistema integral para la gestión, emisión y seguimiento de comprobantes digita
 - Firebase Project (con `serviceAccountKey.json` configurado en `/credenciales`)
 
 ### Instalación
-1. Clona el repositorio:
+1. Clonar el repositorio:
    ```bash
    git clone [https://github.com/emmanuelarnedo/GestorComprobantes.git]
 
-2. Instala las dependencias del Frontend:
+2. Instalar las dependencias del Frontend:
     cd frontend
         npm install
 
-3. Ejecuta el Backend:
+3. Ejecutar el Backend:
     cd backend/GestorComprobantes.API
     dotnet run
