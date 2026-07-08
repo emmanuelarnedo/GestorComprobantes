@@ -18,6 +18,10 @@ const UBICACIONES = {
   ]
 };
 
+// --- CONSTANTE GLOBAL ---
+// Al estar aquí afuera, TODAS las funciones pueden usarla sin errores.
+const API_URL = 'https://backend-gestorcomprobantes.onrender.com/api';
+
 export default function App() {
   // --- ESTADOS PRINCIPALES ---
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -69,8 +73,7 @@ export default function App() {
 
   const cargarHistorial = async () => {
     try {
-      const API_URL = 'https://backend-gestorcomprobantes.onrender.com';
-      
+      // Usamos la variable global API_URL
       const resCot = await fetch(`${API_URL}/cotizaciones`);
       const resRec = await fetch(`${API_URL}/recibos`);
 
@@ -213,6 +216,7 @@ export default function App() {
     }
 
     try {
+      // Usamos la variable global API_URL
       const response = await fetch(`${API_URL}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -221,7 +225,7 @@ export default function App() {
 
       if (response.ok) {
         procesarPDF();
-        alert("Documento descargado con éxito");
+        alert("Documento guardado y descargado con éxito");
         setVistaPrevia(false);
         setIdComprobante(null);
         await cargarHistorial(); 

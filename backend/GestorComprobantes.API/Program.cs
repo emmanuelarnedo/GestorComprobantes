@@ -3,18 +3,14 @@ using Google.Cloud.Firestore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configuración del Middleware de CORS
+// 1. Configuración del Middleware de CORS (A prueba de balas para Vercel)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("PermitirFrontend", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "https://localhost:5173",
-                "https://gestor-comprobantes-one.vercel.app" // Corregido: Sin barra diagonal al final
-            ) 
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.AllowAnyOrigin() // Permite cualquier URL de Vercel temporal o final
+              .AllowAnyHeader()
+              .AllowAnyMethod();
     });
 });
 
@@ -24,7 +20,7 @@ builder.Services.AddControllers();
 // 2. Registro del FirebaseService central como Singleton
 builder.Services.AddSingleton<FirebaseService>();
 
-// 3. Resolución segura de la inyección para FirestoreDb vinculada al Singleton anterior
+// 3. Resolución segura de la inyección para FirestoreDb vinculada al Singleton
 builder.Services.AddSingleton(sp => 
 {
     var firebaseService = sp.GetRequiredService<FirebaseService>();
@@ -36,7 +32,7 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// 4. Activación de la política CORS (Siempre antes de mapear controladores)
+// 4. Activación de la política CORS (ESTO DEBE IR AQUÍ, ANTES DE MAPCONTROLLERS)
 app.UseCors("PermitirFrontend");
 
 if (app.Environment.IsDevelopment())
@@ -44,7 +40,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// Se remueve app.UseHttpsRedirection() para evitar conflictos con el proxy inverso de Render
+// app.UseHttpsRedirection(); // <-- Mantenemos esto comentado para que Render no falle
 
 app.UseAuthorization();
 
