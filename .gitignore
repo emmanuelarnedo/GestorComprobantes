@@ -10,3 +10,4 @@ bin/
 obj/ 
 .vs/ 
 *.db 
+backend/GestorComprobantes.API/credenciales/*.json
