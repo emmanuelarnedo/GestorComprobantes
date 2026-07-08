@@ -213,7 +213,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5033/api/${endpoint}`, {
+      const response = await fetch(`${API_URL}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadBackend)
