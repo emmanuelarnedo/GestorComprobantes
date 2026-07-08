@@ -33,7 +33,10 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 // 4. Activación de la política CORS (ESTO DEBE IR AQUÍ, ANTES DE MAPCONTROLLERS)
-app.UseCors("PermitirFrontend");
+app.UseCors(policy => policy
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 if (app.Environment.IsDevelopment())
 {
