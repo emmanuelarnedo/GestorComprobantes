@@ -3,50 +3,25 @@ using Google.Cloud.Firestore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configuración del Middleware de CORS (A prueba de balas para Vercel)
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("PermitirFrontend", policy =>
-    {
-        policy.AllowAnyOrigin() // Permite cualquier URL de Vercel temporal o final
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});
-
-// Registrar servicios del framework controlador
+// Registrar servicios
+builder.Services.AddCors(); // Servicio básico
 builder.Services.AddControllers();
-
-// 2. Registro del FirebaseService central como Singleton
 builder.Services.AddSingleton<FirebaseService>();
-
-// 3. Resolución segura de la inyección para FirestoreDb vinculada al Singleton
-builder.Services.AddSingleton(sp => 
-{
-    var firebaseService = sp.GetRequiredService<FirebaseService>();
-    return firebaseService.Db; 
-});
-
-// OpenAPI (Swagger)
+builder.Services.AddSingleton(sp => sp.GetRequiredService<FirebaseService>().Db);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// 4. Activación de la política CORS (ESTO DEBE IR AQUÍ, ANTES DE MAPCONTROLLERS)
+// --- ORDEN CRÍTICO ---
+// 1. CORS primero, permite todo origen, método y cabecera
 app.UseCors(policy => policy
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-// app.UseHttpsRedirection(); // <-- Mantenemos esto comentado para que Render no falle
-
+// 2. Luego Routing, Auth, etc.
+app.UseRouting(); 
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

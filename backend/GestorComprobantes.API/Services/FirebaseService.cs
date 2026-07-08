@@ -30,7 +30,7 @@ public class FirebaseService
         else
         {
             // Entorno de Producción (Render): Obtiene la cadena estructurada de las variables de entorno
-            string jsonContent = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_JSON");
+            string jsonContent = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_JSON") ?? string.Empty;
             if (string.IsNullOrEmpty(jsonContent))
             {
                 throw new InvalidOperationException("La variable de entorno FIREBASE_CREDENTIALS_JSON no está configurada.");
