@@ -1,40 +1,49 @@
 using Microsoft.AspNetCore.Mvc;
 using GestorComprobantes.API.Models;
-using GestorComprobantes.API.Services; // ¡Importante!
+using GestorComprobantes.API.Services;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Google.Cloud.Firestore;
 
 namespace GestorComprobantes.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+// Forzamos la ruta en minúsculas para evitar problemas en servidores Linux (Render)
+[Route("api/cotizaciones")] 
 public class CotizacionesController : ControllerBase
 {
     private readonly FirebaseService _firebaseService;
+    private readonly FirestoreDb _db;
 
-    // Inyectamos el servicio aquí
-    public CotizacionesController(FirebaseService firebaseService)
+    public CotizacionesController(FirebaseService firebaseService, FirestoreDb db)
     {
         _firebaseService = firebaseService;
+        _db = db;
     }
 
+    // Obtener todas las cotizaciones
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Cotizacion>>> Get()
+    {
+        var snapshot = await _db.Collection("cotizaciones").GetSnapshotAsync();
+        var lista = new List<Cotizacion>();
+        foreach (var doc in snapshot.Documents)
+        {
+            lista.Add(doc.ConvertTo<Cotizacion>());
+        }
+        return Ok(lista);
+    }
+
+    // Guardar una nueva cotización
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] Cotizacion nuevaCotizacion)
     {
-        if (nuevaCotizacion == null) return BadRequest("Datos vacíos");
+        if (nuevaCotizacion == null) 
+        {
+            return BadRequest(new { status = "Error", message = "Datos vacíos o mal formateados" });
+        }
 
-        // Guardamos en la colección "cotizaciones" de Firestore
         await _firebaseService.GuardarDocumento("cotizaciones", nuevaCotizacion);
-
-        return Ok(new { 
-            status = "Éxito", 
-            message = "Cotización guardada en Firebase" 
-        });
-    }
-
-    [HttpGet]
-    public IActionResult Get()
-    {
-        // Por ahora dejamos el GET simulado o vacío, 
-        // ¡mañana si querés implementamos la lectura real desde Firestore!
-        return Ok(new { message = "Endpoint listo para leer de Firebase" });
+        return Ok(new { status = "Éxito", message = "Cotización guardada en Firebase" });
     }
 }

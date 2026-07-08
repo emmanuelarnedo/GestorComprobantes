@@ -8,7 +8,8 @@ using Google.Cloud.Firestore;
 namespace GestorComprobantes.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+// Forzamos la ruta en minúsculas
+[Route("api/recibos")]
 public class RecibosController : ControllerBase
 {
     private readonly FirebaseService _firebaseService;
@@ -33,10 +34,15 @@ public class RecibosController : ControllerBase
         return Ok(lista);
     }
 
+    // Guardar un nuevo recibo
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] Recibo nuevoRecibo)
     {
-        if (nuevoRecibo == null) return BadRequest("Datos vacíos");
+        if (nuevoRecibo == null) 
+        {
+            return BadRequest(new { status = "Error", message = "Datos vacíos o mal formateados" });
+        }
+
         await _firebaseService.GuardarDocumento("recibos", nuevoRecibo);
         return Ok(new { status = "Éxito", message = "Recibo guardado en Firebase" });
     }

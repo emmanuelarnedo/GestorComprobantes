@@ -9,10 +9,12 @@ builder.Services.AddCors(options =>
     options.AddPolicy("PermitirFrontend", policy =>
     {
         policy.WithOrigins(
-            "https://localhost:5173",
-            "https://gestor-comprobantes-one.vercel.app/") 
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "https://gestor-comprobantes-one.vercel.app" // Corregido: Sin barra diagonal al final
+            ) 
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
@@ -42,7 +44,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Se remueve app.UseHttpsRedirection() para evitar conflictos con el proxy inverso de Render
+
 app.UseAuthorization();
 
 app.MapControllers();
