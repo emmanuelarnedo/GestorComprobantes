@@ -69,16 +69,17 @@ export default function App() {
 
   const cargarHistorial = async () => {
     try {
-      const resCot = await fetch('http://localhost:5033/api/cotizaciones');
-      const resRec = await fetch('http://localhost:5033/api/recibos');
+      const API_URL = 'https://gestorcomprobantes.onrender.com/api';
       
+      const resCot = await fetch(`${API_URL}/cotizaciones`);
+      const resRec = await fetch(`${API_URL}/recibos`);
+
       if (resCot.ok && resRec.ok) {
         const dataCot = await resCot.json();
         const dataRec = await resRec.json();
         
-        // Mapeamos para homogeneizar la estructura en la lista del historial
         const cotizacionesMapeadas = dataCot.map(c => ({
-          id: c.id, // Puede venir undefined si son datos viejos, se maneja en el render
+          id: c.id, 
           tipo: 'Cotización',
           cliente: c.cliente,
           fecha: new Date(c.fechaEmision).toLocaleDateString('es-AR'),
@@ -148,9 +149,8 @@ export default function App() {
     const ids = documentosEmitidos
       .filter(d => d.tipo === tipoComprobante)
       .map(d => d.id)
-      .filter(Boolean); // Filtra nulos o indefinidos
+      .filter(Boolean);
     
-    // Corregido: let en lugar de int
     let candidate = 1;
     while (ids.includes(candidate)) {
       candidate++;
@@ -184,7 +184,7 @@ export default function App() {
     window.location.href = `mailto:?subject=${asunto}&body=${cuerpo}`;
   };
 
-  // --- INTEGRACIÓN CON BACKEND (FIREBASE) ---
+  // --- INTEGRACIÓN CON BACKEND ---
   const handleGuardarDocumento = async () => {
     const endpoint = tipoComprobante === 'Cotización' ? 'cotizaciones' : 'recibos';
     
@@ -224,7 +224,7 @@ export default function App() {
         alert("Documento descargado con éxito");
         setVistaPrevia(false);
         setIdComprobante(null);
-        await cargarHistorial(); // Refresca la lista desde la base de datos
+        await cargarHistorial(); 
       } else {
         alert("Hubo un error al guardar en el servidor. Revisá la consola del Backend.");
       }
@@ -280,7 +280,6 @@ export default function App() {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-950 text-gray-100' : 'bg-gray-100 text-gray-800'}`}>
       
-      {/* MODO OSCURO */}
       <div className="absolute top-4 right-4 z-10">
         <button 
           onClick={() => setIsDarkMode(!isDarkMode)}
@@ -550,14 +549,14 @@ export default function App() {
             
             <div className="bg-white rounded-md shadow-2xl my-10 overflow-hidden w-[210mm] min-w-[210mm] relative flex flex-col">
               
-              <button onClick={() => { setVistaPrevia(false); setIdComprobante(null); }} className="absolute top-2 right-2 text-3xl font-bold text-red-500 hover:text-red-700 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full z-40">
+              <button onClick={() => setVistaPrevia(false)} className="absolute top-2 right-2 text-3xl font-bold text-red-500 hover:text-red-700 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full z-40">
                 &times;
               </button>
 
               {/* ÁREA DEL PDF (Formato estricto A4) */}
               <div id="area-pdf-imprimible" className="bg-white text-gray-900 p-[15mm] w-[210mm] h-[296mm] max-h-[296mm] overflow-hidden font-sans text-[12px] flex flex-col box-border relative">
                 
-                {/* MARCA DE AGUA CENTRAL */}
+                {/* MARCA DE AGUA CENTRAL CON FILTRO COHERENTE */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none z-0">
                   <img src="/marca de agua.png" alt="Marca de Agua" className="w-[250mm] object-contain grayscale" />
                 </div>
@@ -586,7 +585,7 @@ export default function App() {
                   <div className="flex-grow flex flex-col">
                     {tipoComprobante === 'Cotización' ? (
                       <div className="flex-grow flex flex-col">
-                        <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 border border-gray-300 text-[11px] text-gray-800 mb-4">
+                        <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 border border-gray-300 text-[11px] text-gray-800">
                           <p><strong>Señor(es):</strong> {cliente.toUpperCase() || '----------------------------------------'}</p>
                           <p><strong>Lugar de Destino:</strong> {direccion || '----------------------------------------'}</p>
                           <p><strong>Localidad:</strong> {provincia === 'Otra' ? otraLocalidad : localidad}</p>
@@ -643,7 +642,7 @@ export default function App() {
                         <div className="space-y-8">
                           <div className="flex items-end">
                             <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">Recibí de (Señor/es):</span> 
-                            <span className="flex-1 border-b-2 border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">{cliente.toUpperCase() || ' '}</span>
+                            <span className="flex-1 border-b border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">{cliente.toUpperCase() || ' '}</span>
                           </div>
                           <div className="flex items-end">
                             <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">La suma de pesos:</span> 
@@ -661,7 +660,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* FIRMAS DE RECIBO AL FONDO (Exclusivo de Recibo) */}
+                        {/* FIRMAS DE RECIBO AL FONDO */}
                         <div className="mt-auto flex justify-between px-10 pb-4">
                           <div className="text-center w-48 border-t-2 border-gray-800 pt-2">
                             <p className="font-bold text-[10px]">Firma / Aclaración</p>

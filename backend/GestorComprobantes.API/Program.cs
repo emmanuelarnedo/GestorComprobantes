@@ -3,7 +3,7 @@ using Google.Cloud.Firestore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configuración de CORS
+// 1. Configuración del Middleware de CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("PermitirFrontend", policy =>
@@ -14,20 +14,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Registrar controladores
+// Registrar servicios del framework controlador
 builder.Services.AddControllers();
 
-// 2. Registrar el servicio de Firebase como Singleton
-// Esto permite que el servicio viva durante toda la ejecución de la app
+// 2. Registro del FirebaseService central como Singleton
 builder.Services.AddSingleton<FirebaseService>();
 
-// 3. Registrar FirestoreDb directamente para inyectarlo en los controladores
+// 3. Resolución segura de la inyección para FirestoreDb vinculada al Singleton anterior
 builder.Services.AddSingleton(sp => 
 {
     var firebaseService = sp.GetRequiredService<FirebaseService>();
-    // Aquí necesitamos acceder al _db que está dentro de FirebaseService
-    // TIP: Para que esto funcione, asegúrate de haber hecho la propiedad pública en FirebaseService
-    // O puedes recrear la lógica aquí. La opción más limpia es inyectar el servicio.
     return firebaseService.Db; 
 });
 
@@ -36,10 +32,9 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// 4. Activación de CORS
+// 4. Activación de la política CORS (Siempre antes de mapear controladores)
 app.UseCors("PermitirFrontend");
 
-// Configuración del pipeline
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
