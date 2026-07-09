@@ -566,7 +566,7 @@ export default function App() {
                     
                     {/* MARCA DE AGUA CENTRAL CON FILTRO COHERENTE */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none z-0">
-                      <img src="/marca_de_agua.png" alt="Marca de Agua" className="w-[150mm] object-contain grayscale" />
+                      <img src="/marca de agua.png" alt="Marca de Agua" className="w-[150mm] object-contain grayscale" />
                     </div>
 
                     <div className="relative z-10 flex flex-col h-full w-full">
