@@ -551,7 +551,7 @@ export default function App() {
             <div className="relative flex flex-col w-full items-center my-4 sm:my-10">
               
               {/* Botón de cerrar flotante */}
-              <button onClick={() => setVistaPrevia(false)} className="absolute -top-2 right-2 sm:-top-6 sm:-right-10 text-3xl font-bold text-white hover:text-red-400 z-50 bg-gray-800 border border-gray-600 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors">
+              <button onClick={() => setVistaPrevia(false)} className="absolute -top-2 right-2 sm:-top-5 sm:-right-3 text-3xl font-bold text-white hover:text-red-400 z-50 bg-gray-800 border border-gray-600 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors">
                 &times;
               </button>
 
