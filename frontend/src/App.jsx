@@ -27,6 +27,9 @@ export default function App() {
   const [tipoComprobante, setTipoComprobante] = useState(''); 
   const [cliente, setCliente] = useState('');
   
+  // NUEVO: Estado para la fecha de emisión (Por defecto hoy en formato YYYY-MM-DD)
+  const [fechaEmision, setFechaEmision] = useState(new Date().toISOString().split('T')[0]);
+  
   // Estados de Cotización
   const [direccion, setDireccion] = useState('');
   const [provincia, setProvincia] = useState('Tucumán');
@@ -46,7 +49,9 @@ export default function App() {
   // Estados UI y Base de Datos
   const [vistaPrevia, setVistaPrevia] = useState(false);
   const [documentosEmitidos, setDocumentosEmitidos] = useState([]);
-  const [idComprobante, setIdComprobante] = useState(null);
+  
+  // NUEVO: Estado para aislar el documento que se ve en el historial sin pisar el formulario
+  const [documentoEnVista, setDocumentoEnVista] = useState(null);
 
   // --- EFECTOS ---
   useEffect(() => {
@@ -65,7 +70,7 @@ export default function App() {
     }
   }, [provincia]);
 
-  // Carga inicial del historial desde la API
+  // Carga inicial del historial
   useEffect(() => {
     cargarHistorial();
   }, []);
@@ -83,7 +88,7 @@ export default function App() {
           id: c.id, 
           tipo: 'Cotización',
           cliente: c.cliente,
-          fecha: new Date(c.fechaEmision).toLocaleDateString('es-AR'),
+          fecha: new Date(c.fechaEmision).toLocaleDateString('es-AR'), // El backend lo envía como string
           total: c.totalGeneral,
           direccion: c.direccion,
           provincia: c.provincia,
@@ -104,7 +109,7 @@ export default function App() {
         setDocumentosEmitidos([...cotizacionesMapeadas, ...recibosMapeados]);
       }
     } catch (e) {
-      console.error("Error al conectar con la API para cargar el historial:", e);
+      console.error("Error al cargar el historial:", e);
     }
   };
 
@@ -137,19 +142,16 @@ export default function App() {
       setServicio(''); setCantidad(1); setPrecioUnitario('');
       setItems([]); 
       setMontoRecibo(''); setConceptoRecibo(''); setMetodoPagoRecibo('Efectivo');
-      setVistaPrevia(false);
-      setIdComprobante(null);
+      setFechaEmision(new Date().toISOString().split('T')[0]);
     }
   };
 
   const totalGeneral = items.reduce((acc, item) => acc + item.total, 0);
 
-  // Calcular ID correlativo para la vista previa en tiempo real
   const obtenerIdPreview = () => {
-    if (idComprobante) return idComprobante;
     const ids = documentosEmitidos
       .filter(d => d.tipo === tipoComprobante)
-      .map(d => d.id)
+      .map(d => parseInt(d.id))
       .filter(Boolean);
     
     let candidate = 1;
@@ -159,12 +161,48 @@ export default function App() {
     return candidate;
   };
 
+  // --- OBTENER DATOS AISLADOS PARA EL PDF ---
+  // Esta función decide si mostrar los datos del formulario actual o los del historial
+  const getDatosParaPDF = () => {
+    if (documentoEnVista) {
+      return {
+        tipo: documentoEnVista.tipo,
+        cliente: documentoEnVista.cliente,
+        idFormateado: String(documentoEnVista.id).padStart(5, '0'),
+        fecha: documentoEnVista.fecha,
+        direccion: documentoEnVista.direccion,
+        provincia: documentoEnVista.provincia,
+        localidad: documentoEnVista.localidad,
+        items: documentoEnVista.items || [],
+        total: parseFloat(documentoEnVista.total || 0),
+        concepto: documentoEnVista.conceptoRecibo,
+        metodoPago: documentoEnVista.metodoPagoRecibo
+      };
+    } else {
+      // Ajuste de zona horaria para que no reste un día
+      const fechaObj = new Date(fechaEmision + 'T12:00:00');
+      return {
+        tipo: tipoComprobante,
+        cliente: cliente || 'Consumidor Final',
+        idFormateado: String(obtenerIdPreview()).padStart(5, '0'),
+        fecha: isNaN(fechaObj) ? new Date().toLocaleDateString('es-AR') : fechaObj.toLocaleDateString('es-AR'),
+        direccion: direccion,
+        provincia: provincia === 'Otra' ? otraProvincia : provincia,
+        localidad: provincia === 'Otra' ? otraLocalidad : localidad,
+        items: items,
+        total: tipoComprobante === 'Cotización' ? totalGeneral : (parseFloat(montoRecibo) || 0),
+        concepto: conceptoRecibo,
+        metodoPago: metodoPagoRecibo
+      };
+    }
+  };
+
   // --- FUNCIONES DE PDF Y CORREO ---
   const procesarPDF = () => {
+    const datosPDF = getDatosParaPDF();
     const elemento = document.getElementById('area-pdf-imprimible');
-    const fechaStr = new Date().toLocaleDateString('es-AR').replace(/\//g, '-');
-    const idFormateado = String(obtenerIdPreview()).padStart(5, '0');
-    const nombreArchivo = `${tipoComprobante}_N${idFormateado}_${cliente.replace(/\s+/g, '_')}_${fechaStr}.pdf`;
+    const fechaStr = datosPDF.fecha.replace(/\//g, '-');
+    const nombreArchivo = `${datosPDF.tipo}_N${datosPDF.idFormateado}_${datosPDF.cliente.replace(/\s+/g, '_')}_${fechaStr}.pdf`;
 
     const opt = {
       margin: 0,
@@ -178,9 +216,10 @@ export default function App() {
   };
 
   const handleEnviarCorreo = () => {
-    const asunto = encodeURIComponent(`Envío de ${tipoComprobante} - Transportes Don Cristino`);
+    const datosPDF = getDatosParaPDF();
+    const asunto = encodeURIComponent(`Envío de ${datosPDF.tipo} - Transportes Don Cristino`);
     const cuerpo = encodeURIComponent(
-      `Hola,\n\nTe escribo para hacerte llegar la ${tipoComprobante.toLowerCase()} correspondiente.\n\nPor favor, adjuntá manualmente el PDF antes de enviar este correo.\n\nSaludos cordiales,\nTransportes Don Cristino.`
+      `Hola,\n\nTe escribo para hacerte llegar la ${datosPDF.tipo.toLowerCase()} correspondiente.\n\nPor favor, adjuntá manualmente el PDF antes de enviar este correo.\n\nSaludos cordiales,\nTransportes Don Cristino.`
     );
     window.location.href = `mailto:?subject=${asunto}&body=${cuerpo}`;
   };
@@ -197,6 +236,7 @@ export default function App() {
         Localidad: provincia === 'Otra' ? otraLocalidad : localidad,
         Provincia: provincia === 'Otra' ? otraProvincia : provincia,
         TotalGeneral: totalGeneral,
+        FechaEmision: new Date(fechaEmision + 'T12:00:00').toISOString(), // Se envía la fecha elegida
         Items: items.map(i => ({
           Servicio: i.servicio,
           Cantidad: i.cantidad,
@@ -209,7 +249,8 @@ export default function App() {
         Cliente: cliente || 'Consumidor Final',
         Monto: parseFloat(montoRecibo || 0),
         Concepto: conceptoRecibo || '',
-        MetodoPago: metodoPagoRecibo || 'Efectivo'
+        MetodoPago: metodoPagoRecibo || 'Efectivo',
+        FechaEmision: new Date(fechaEmision + 'T12:00:00').toISOString()
       };
     }
 
@@ -223,8 +264,7 @@ export default function App() {
       if (response.ok) {
         procesarPDF();
         alert("Documento guardado y descargado con éxito");
-        setVistaPrevia(false);
-        setIdComprobante(null);
+        cerrarVistaPrevia();
         await cargarHistorial(); 
       } else {
         alert("Hubo un error al guardar en el servidor. Revisá la consola del Backend.");
@@ -236,40 +276,24 @@ export default function App() {
   };
 
   // --- FUNCIONES DEL HISTORIAL ---
-  const cargarDatosAlFormulario = (doc) => {
-    setTipoComprobante(doc.tipo);
-    setCliente(doc.cliente);
-    setIdComprobante(doc.id);
-    
-    if (doc.tipo === 'Cotización') {
-      setDireccion(doc.direccion);
-      if (!UBICACIONES[doc.provincia] && doc.provincia) {
-        setProvincia('Otra');
-        setOtraProvincia(doc.provincia);
-        setOtraLocalidad(doc.localidad);
-      } else {
-        setProvincia(doc.provincia || 'Tucumán');
-        setLocalidad(doc.localidad || 'Concepción');
-      }
-      setItems(doc.items || []);
-    } else {
-      setMontoRecibo(doc.total);
-      setConceptoRecibo(doc.conceptoRecibo);
-      setMetodoPagoRecibo(doc.metodoPagoRecibo);
-    }
-  };
-
   const handleVerDocumento = (doc) => {
-    cargarDatosAlFormulario(doc);
+    setDocumentoEnVista(doc); // Solo cargamos el documento para el modal
     setVistaPrevia(true);
   };
 
   const handleDescargarDesdeHistorial = (doc) => {
-    cargarDatosAlFormulario(doc);
+    setDocumentoEnVista(doc);
     setVistaPrevia(true);
     setTimeout(() => {
       procesarPDF();
     }, 500);
+  };
+
+  const cerrarVistaPrevia = () => {
+    setVistaPrevia(false);
+    setTimeout(() => {
+      setDocumentoEnVista(null); // Limpiamos el estado temporal tras la animación
+    }, 300);
   };
 
   const handleBorrarDocumento = (id) => {
@@ -277,6 +301,8 @@ export default function App() {
       setDocumentosEmitidos(documentosEmitidos.filter(doc => doc.id !== id));
     }
   };
+
+  const datosPDF = getDatosParaPDF();
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-950 text-gray-100' : 'bg-gray-100 text-gray-800'}`}>
@@ -303,7 +329,7 @@ export default function App() {
             <label className="block text-xs font-extrabold mb-2 uppercase tracking-wider text-gray-600 dark:text-gray-300">Tipo de Documento:</label>
             <select 
               value={tipoComprobante} 
-              onChange={(e) => { setTipoComprobante(e.target.value); setIdComprobante(null); }}
+              onChange={(e) => { setTipoComprobante(e.target.value); setDocumentoEnVista(null); }}
               className="w-full p-3.5 pl-8 border-2 rounded-xl text-center font-black text-base bg-white dark:bg-gray-800 border-blue-500 focus:ring-4 focus:ring-blue-200 transition-all cursor-pointer shadow-inner text-gray-800 dark:text-gray-100"
             >
               <option value="" className="text-gray-500 dark:text-gray-400"> -- Seleccionar -- </option>
@@ -322,17 +348,24 @@ export default function App() {
           
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-t-4 border-green-600 border border-gray-200 dark:border-gray-700 space-y-4 transition-colors duration-300">
-              <h3 className="text-sm font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">Datos del Recibo</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">Datos del Recibo</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Recibí de (Señor/es):</label>
                   <input type="text" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Nombre del cliente o empresa" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
+                </div>
+                {/* CAMPO FECHA DE EMISIÓN */}
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Fecha de Emisión:</label>
+                  <input type="date" value={fechaEmision} onChange={(e) => setFechaEmision(e.target.value)} className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">La suma de ($):</label>
                   <input type="number" value={montoRecibo} onChange={(e) => setMontoRecibo(e.target.value)} placeholder="0.00" min="0" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Forma de Pago:</label>
                   <select value={metodoPagoRecibo} onChange={(e) => setMetodoPagoRecibo(e.target.value)} className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100">
                     <option value="Efectivo">Efectivo</option>
@@ -340,7 +373,7 @@ export default function App() {
                     <option value="Cheque">Cheque</option>
                   </select>
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-3">
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">En concepto de:</label>
                   <input type="text" value={conceptoRecibo} onChange={(e) => setConceptoRecibo(e.target.value)} placeholder="Ej: Cancelación total de flete, Pago a cuenta..." className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
                 </div>
@@ -361,11 +394,17 @@ export default function App() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 space-y-4 transition-colors duration-300">
               <h3 className="text-sm font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">Información del Destinatario y Destino</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Cliente:</label>
                   <input type="text" name="cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Nombre completo o Razón Social" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
                 </div>
+                {/* CAMPO FECHA DE EMISIÓN */}
+                <div className="md:col-span-1">
+                  <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Fecha de Emisión:</label>
+                  <input type="date" value={fechaEmision} onChange={(e) => setFechaEmision(e.target.value)} className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Dirección de Entrega/Origen:</label>
                   <input type="text" name="direccion" value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Ej: San Martín 500" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
@@ -384,7 +423,7 @@ export default function App() {
                   </select>
                 </div>
                 {provincia === 'Otra' && (
-                  <div className="animate-in fade-in duration-200">
+                  <div className="animate-in fade-in duration-200 md:col-span-2">
                     <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Especificar Provincia:</label>
                     <input 
                       type="text" 
@@ -429,21 +468,29 @@ export default function App() {
                     <input type="text" value={servicio} onChange={(e) => setServicio(e.target.value)} placeholder="Ej: Viaje de ripio" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
+                    
+                    {/* INPUT DE CANTIDAD CON FLECHITAS */}
                     <div>
                       <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Cantidad:</label>
-                      <input type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value) || 1)} min="1" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
+                      <div className="flex border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 overflow-hidden">
+                        <button type="button" onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="px-4 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 font-bold transition-colors">
+                          -
+                        </button>
+                        <input type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value) || 1)} min="1" className="w-full p-2 text-center bg-transparent text-gray-800 dark:text-gray-100 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                        <button type="button" onClick={() => setCantidad(cantidad + 1)} className="px-4 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 font-bold transition-colors">
+                          +
+                        </button>
+                      </div>
                     </div>
+                    
                     <div>
                       <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Precio Unitario ($):</label>
-                      <input type="text" value={precioUnitario} onChange={(e) => setPrecioUnitario(e.target.value)} placeholder="0.00" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
+                      <input type="number" step="0.01" value={precioUnitario} onChange={(e) => setPrecioUnitario(e.target.value)} placeholder="0.00" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
                     </div>
                   </div>
                   <div className="flex gap-2 pt-2">
                     <button type="submit" className="flex-1 bg-blue-600 text-white font-black p-3 rounded-xl hover:bg-blue-700 shadow-md transition-colors uppercase text-xs tracking-wider">
                       + Agregar
-                    </button>
-                    <button type="button" onClick={() => {setServicio(''); setCantidad(1); setPrecioUnitario('');}} className="bg-gray-200 dark:bg-gray-600 p-3 rounded-xl font-bold hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-gray-700 dark:text-gray-100">
-                      Borrar campos
                     </button>
                   </div>
                 </form>
@@ -544,29 +591,24 @@ export default function App() {
           </div>
         )}
 
-        {/* --- MODAL GLOBAL DEL PDF A4 --- */}
+        {/* --- MODAL GLOBAL DEL PDF A4 (RESPONSIVE) --- */}
         {vistaPrevia && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
             
             <div className="relative flex flex-col w-full items-center my-4 sm:my-10">
               
-              {/* Botón de cerrar flotante */}
-              <button onClick={() => setVistaPrevia(false)} className="absolute -top-2 right-2 sm:-top-5 sm:-right-3 text-3xl font-bold text-white hover:text-red-400 z-50 bg-gray-800 border border-gray-600 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors">
+              <button onClick={cerrarVistaPrevia} className="absolute -top-2 right-2 sm:-top-6 sm:-right-10 text-3xl font-bold text-white hover:text-red-400 z-50 bg-gray-800 border border-gray-600 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors">
                 &times;
               </button>
 
-              {/* Contenedor responsive que ajusta la altura para no dejar espacios en blanco enormes */}
               <div className="w-full flex justify-center overflow-hidden h-[145mm] sm:h-[225mm] md:h-[270mm] lg:h-auto mt-12 sm:mt-0">
-                
-                {/* Wrapper de escalado visual */}
                 <div className="origin-top scale-[0.48] sm:scale-75 md:scale-90 lg:scale-100 transition-transform">
 
-                  {/* ÁREA DEL PDF INTACTA (A4 210x296mm) */}
+                  {/* ÁREA DEL PDF INTACTA */}
                   <div id="area-pdf-imprimible" className="bg-white text-gray-900 p-[15mm] w-[210mm] h-[296mm] max-h-[296mm] overflow-hidden font-sans text-[12px] flex flex-col box-border relative shadow-2xl">
                     
-                    {/* MARCA DE AGUA CENTRAL CON FILTRO COHERENTE */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none z-0">
-                      <img src="/marca_de_agua.png" alt="Marca de Agua" className="w-[200mm] object-contain grayscale" />
+                      <img src="/Imagen de página.png" alt="Marca de Agua" className="w-[250mm] object-contain grayscale" />
                     </div>
 
                     <div className="relative z-10 flex flex-col h-full w-full">
@@ -583,21 +625,21 @@ export default function App() {
                         </div>
 
                         <div className="flex-1 text-right">
-                          <h4 className="text-sm font-black uppercase bg-gray-100 p-1 px-3 border border-gray-300 inline-block">{tipoComprobante}</h4>
-                          <p className="text-xs font-bold mt-1.5">N° {String(obtenerIdPreview()).padStart(5, '0')}</p>
-                          <p className="text-[10px] text-gray-600">Fecha: {new Date().toLocaleDateString('es-AR')}</p>
+                          <h4 className="text-sm font-black uppercase bg-gray-100 p-1 px-3 border border-gray-300 inline-block">{datosPDF.tipo}</h4>
+                          <p className="text-xs font-bold mt-1.5">N° {datosPDF.idFormateado}</p>
+                          <p className="text-[10px] text-gray-600">Fecha: {datosPDF.fecha}</p>
                         </div>
                       </div>
                       
-                      {/* CUERPO DINÁMICO */}
+                      {/* CUERPO DINÁMICO REFACTORIZADO A DATOSPDF */}
                       <div className="flex-grow flex flex-col">
-                        {tipoComprobante === 'Cotización' ? (
+                        {datosPDF.tipo === 'Cotización' ? (
                           <div className="flex-grow flex flex-col">
                             <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 border border-gray-300 text-[11px] text-gray-800">
-                              <p><strong>Señor(es):</strong> {cliente.toUpperCase() || '----------------------------------------'}</p>
-                              <p><strong>Lugar de Destino:</strong> {direccion || '----------------------------------------'}</p>
-                              <p><strong>Localidad:</strong> {provincia === 'Otra' ? otraLocalidad : localidad}</p>
-                              <p><strong>Provincia:</strong> {provincia === 'Otra' ? otraProvincia : provincia}</p>
+                              <p><strong>Señor(es):</strong> {datosPDF.cliente.toUpperCase() || '----------------------------------------'}</p>
+                              <p><strong>Lugar de Destino:</strong> {datosPDF.direccion || '----------------------------------------'}</p>
+                              <p><strong>Localidad:</strong> {datosPDF.localidad}</p>
+                              <p><strong>Provincia:</strong> {datosPDF.provincia}</p>
                             </div>
 
                             <div className="w-full mt-4">
@@ -611,12 +653,12 @@ export default function App() {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-300">
-                                  {items.length === 0 ? (
+                                  {datosPDF.items.length === 0 ? (
                                     <tr>
                                       <td colSpan="4" className="p-4 text-center italic text-gray-400">Sin líneas de servicios cargadas.</td>
                                     </tr>
                                   ) : (
-                                    items.map(i => (
+                                    datosPDF.items.map(i => (
                                       <tr key={i.id}>
                                         <td className="p-2 border-r border-gray-400">{i.servicio}</td>
                                         <td className="p-2 text-center border-r border-gray-400">{i.cantidad}</td>
@@ -629,18 +671,17 @@ export default function App() {
                               </table>
                             </div>
                             
-                            {/* TOTALES DE COTIZACIÓN AL FONDO */}
                             <div className="mt-auto flex justify-between items-end pt-4 border-t-2 border-gray-800">
                               <div className="w-2/3 text-[10px] space-y-1.5 text-gray-600 italic pr-4">
                                 <p className="font-bold text-gray-900 not-italic">Método de pago: Efectivo</p>
                                 <p className="leading-tight">
-                                  * Observaciones: El presupuesto contempla la logística hacia <strong>{direccion || '[Dirección]'}</strong>, localidad de <strong>{provincia === 'Otra' ? otraLocalidad : localidad}</strong>, <strong>{provincia === 'Otra' ? otraProvincia : provincia}</strong>. Validez de 20 días hábiles.
+                                  * Observaciones: El presupuesto contempla la logística hacia <strong>{datosPDF.direccion || '[Dirección]'}</strong>, localidad de <strong>{datosPDF.localidad}</strong>, <strong>{datosPDF.provincia}</strong>. Validez de 20 días hábiles.
                                 </p>
                               </div>
                               <div className="text-right w-1/3">
                                 <span className="text-[10px] text-gray-400 block uppercase font-bold">Total Neto a Pagar</span>
                                 <span className="text-xl font-black text-blue-900">
-                                  ${totalGeneral.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                  ${datosPDF.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
                             </div>
@@ -650,25 +691,24 @@ export default function App() {
                             <div className="space-y-8">
                               <div className="flex items-end">
                                 <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">Recibí de (Señor/es):</span> 
-                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">{cliente.toUpperCase() || ' '}</span>
+                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">{datosPDF.cliente.toUpperCase() || ' '}</span>
                               </div>
                               <div className="flex items-end">
                                 <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">La suma de pesos:</span> 
                                 <span className="flex-1 border-b border-gray-400 pb-1 px-2 font-bold text-[14px] text-blue-900">
-                                  ${montoRecibo ? parseFloat(montoRecibo).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '0,00'}
+                                  ${datosPDF.total ? parseFloat(datosPDF.total).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '0,00'}
                                 </span>
                               </div>
                               <div className="flex items-end">
                                 <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">En concepto de:</span> 
-                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 text-[14px]">{conceptoRecibo || ' '}</span>
+                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 text-[14px]">{datosPDF.concepto || ' '}</span>
                               </div>
                               <div className="flex items-end">
                                 <span className="font-bold text-gray-600 w-40 uppercase text-[11px]">Forma de pago:</span> 
-                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 text-[14px]">{metodoPagoRecibo || ' '}</span>
+                                <span className="flex-1 border-b border-gray-400 pb-1 px-2 text-[14px]">{datosPDF.metodoPago || ' '}</span>
                               </div>
                             </div>
 
-                            {/* FIRMAS DE RECIBO AL FONDO */}
                             <div className="mt-auto flex justify-between px-10 pb-4">
                               <div className="text-center w-48 border-t-2 border-gray-800 pt-2">
                                 <p className="font-bold text-[10px]">Firma / Aclaración</p>
@@ -687,12 +727,19 @@ export default function App() {
                 </div>
               </div>
 
-              {/* ZONA DE BOTONES DEL MODAL (Fija en la parte inferior) */}
+              {/* ZONA DE BOTONES DEL MODAL */}
               <div className="bg-white p-4 flex flex-col sm:flex-row gap-3 w-full max-w-[210mm] mt-4 rounded-xl shadow-lg z-10">
-                <button onClick={handleGuardarDocumento} className="flex-1 bg-blue-600 text-white font-black p-3 rounded shadow hover:bg-blue-700 flex items-center justify-center gap-2 uppercase text-xs transition-colors">
-                  💾 Guardar y Descargar PDF
-                </button>
-                <button onClick={handleEnviarCorreo} className="flex-1 bg-green-600 text-white font-black p-3 rounded shadow hover:bg-green-700 flex items-center justify-center gap-2 uppercase text-xs transition-colors">
+                {/* Solo mostramos el botón de guardar si NO estamos viendo el historial */}
+                {!documentoEnVista ? (
+                  <button onClick={handleGuardarDocumento} className="flex-1 bg-blue-600 text-white font-black p-3 rounded shadow hover:bg-blue-700 flex items-center justify-center gap-2 uppercase text-xs transition-colors">
+                    💾 Guardar y Descargar PDF
+                  </button>
+                ) : (
+                  <button onClick={procesarPDF} className="flex-1 bg-green-600 text-white font-black p-3 rounded shadow hover:bg-green-700 flex items-center justify-center gap-2 uppercase text-xs transition-colors">
+                    📥 Volver a descargar PDF
+                  </button>
+                )}
+                <button onClick={handleEnviarCorreo} className="flex-1 bg-yellow-500 text-white font-black p-3 rounded shadow hover:bg-yellow-600 flex items-center justify-center gap-2 uppercase text-xs transition-colors">
                   📧 Enviar Documento por Correo
                 </button>
               </div>
