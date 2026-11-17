@@ -27,7 +27,7 @@ export default function App() {
   const [tipoComprobante, setTipoComprobante] = useState(''); 
   const [cliente, setCliente] = useState('');
   
-  // NUEVO: Estado para la fecha de emisión (Por defecto hoy en formato YYYY-MM-DD)
+  // Estado para la fecha de emisión (Por defecto hoy en formato YYYY-MM-DD)
   const [fechaEmision, setFechaEmision] = useState(new Date().toISOString().split('T')[0]);
   
   // Estados de Cotización
@@ -50,7 +50,7 @@ export default function App() {
   const [vistaPrevia, setVistaPrevia] = useState(false);
   const [documentosEmitidos, setDocumentosEmitidos] = useState([]);
   
-  // NUEVO: Estado para aislar el documento que se ve en el historial sin pisar el formulario
+  // Estado para aislar el documento que se ve en el historial sin pisar el formulario
   const [documentoEnVista, setDocumentoEnVista] = useState(null);
 
   // --- EFECTOS ---
@@ -88,7 +88,7 @@ export default function App() {
           id: c.id, 
           tipo: 'Cotización',
           cliente: c.cliente,
-          fecha: new Date(c.fechaEmision).toLocaleDateString('es-AR'), // El backend lo envía como string
+          fecha: new Date(c.fechaEmision).toLocaleDateString('es-AR'), 
           total: c.totalGeneral,
           direccion: c.direccion,
           provincia: c.provincia,
@@ -162,7 +162,6 @@ export default function App() {
   };
 
   // --- OBTENER DATOS AISLADOS PARA EL PDF ---
-  // Esta función decide si mostrar los datos del formulario actual o los del historial
   const getDatosParaPDF = () => {
     if (documentoEnVista) {
       return {
@@ -179,7 +178,6 @@ export default function App() {
         metodoPago: documentoEnVista.metodoPagoRecibo
       };
     } else {
-      // Ajuste de zona horaria para que no reste un día
       const fechaObj = new Date(fechaEmision + 'T12:00:00');
       return {
         tipo: tipoComprobante,
@@ -236,7 +234,7 @@ export default function App() {
         Localidad: provincia === 'Otra' ? otraLocalidad : localidad,
         Provincia: provincia === 'Otra' ? otraProvincia : provincia,
         TotalGeneral: totalGeneral,
-        FechaEmision: new Date(fechaEmision + 'T12:00:00').toISOString(), // Se envía la fecha elegida
+        FechaEmision: new Date(fechaEmision + 'T12:00:00').toISOString(),
         Items: items.map(i => ({
           Servicio: i.servicio,
           Cantidad: i.cantidad,
@@ -277,7 +275,7 @@ export default function App() {
 
   // --- FUNCIONES DEL HISTORIAL ---
   const handleVerDocumento = (doc) => {
-    setDocumentoEnVista(doc); // Solo cargamos el documento para el modal
+    setDocumentoEnVista(doc); 
     setVistaPrevia(true);
   };
 
@@ -292,7 +290,7 @@ export default function App() {
   const cerrarVistaPrevia = () => {
     setVistaPrevia(false);
     setTimeout(() => {
-      setDocumentoEnVista(null); // Limpiamos el estado temporal tras la animación
+      setDocumentoEnVista(null); 
     }, 300);
   };
 
@@ -356,7 +354,6 @@ export default function App() {
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Recibí de (Señor/es):</label>
                   <input type="text" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Nombre del cliente o empresa" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
                 </div>
-                {/* CAMPO FECHA DE EMISIÓN */}
                 <div>
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Fecha de Emisión:</label>
                   <input type="date" value={fechaEmision} onChange={(e) => setFechaEmision(e.target.value)} className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
@@ -399,7 +396,6 @@ export default function App() {
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Cliente:</label>
                   <input type="text" name="cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Nombre completo o Razón Social" className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
                 </div>
-                {/* CAMPO FECHA DE EMISIÓN */}
                 <div className="md:col-span-1">
                   <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Fecha de Emisión:</label>
                   <input type="date" value={fechaEmision} onChange={(e) => setFechaEmision(e.target.value)} className="w-full p-2 rounded border bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100" />
@@ -469,7 +465,6 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     
-                    {/* INPUT DE CANTIDAD CON FLECHITAS */}
                     <div>
                       <label className="block text-xs font-bold mb-1 text-gray-600 dark:text-gray-300">Cantidad:</label>
                       <div className="flex border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 overflow-hidden">
@@ -563,7 +558,11 @@ export default function App() {
                   <p className="text-gray-500 italic">No hay documentos emitidos aún en esta sesión o base de datos.</p>
                 </div>
               ) : (
-                documentosEmitidos.filter(d => d.tipo === tipoComprobante).map(doc => (
+                // ORDENAMIENTO POR ID DE MAYOR A MENOR PARA QUE LOS NUEVOS SALGAN ARRIBA
+                documentosEmitidos
+                  .filter(d => d.tipo === tipoComprobante)
+                  .sort((a, b) => parseInt(b.id) - parseInt(a.id))
+                  .map(doc => (
                   <div key={doc.id || Math.random()} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 transition-colors">
                     <div>
                       <p className="font-bold uppercase text-sm">
@@ -631,7 +630,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* CUERPO DINÁMICO REFACTORIZADO A DATOSPDF */}
+                      {/* CUERPO DINÁMICO */}
                       <div className="flex-grow flex flex-col">
                         {datosPDF.tipo === 'Cotización' ? (
                           <div className="flex-grow flex flex-col">
@@ -729,7 +728,6 @@ export default function App() {
 
               {/* ZONA DE BOTONES DEL MODAL */}
               <div className="bg-white p-4 flex flex-col sm:flex-row gap-3 w-full max-w-[210mm] mt-4 rounded-xl shadow-lg z-10">
-                {/* Solo mostramos el botón de guardar si NO estamos viendo el historial */}
                 {!documentoEnVista ? (
                   <button onClick={handleGuardarDocumento} className="flex-1 bg-blue-600 text-white font-black p-3 rounded shadow hover:bg-blue-700 flex items-center justify-center gap-2 uppercase text-xs transition-colors">
                     💾 Guardar y Descargar PDF
